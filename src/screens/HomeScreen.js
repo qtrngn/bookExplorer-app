@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   TextInput,
@@ -9,7 +9,8 @@ import {
   ActivityIndicator,
   TouchableOpacity,
 } from "react-native";
-import { getFavorites, preloadSampleBooks } from "../data/storage";
+import { useFocusEffect } from "@react-navigation/native";
+import { getFavorites } from "../data/storage";
 import { getPopularBooks, getBooksByCategory, searchBooks } from "../data/api";
 import BookCard from "../components/BookCard";
 import categories from "../data/categories";
@@ -24,14 +25,29 @@ const HomeScreen = ({ navigation }) => {
   const [categoryLoading, setCategoryLoading] = useState(false);
   const [searchResults, setSearchResults] = useState([]);
 
+  useFocusEffect(
+    React.useCallback(() => {
+      let isActive = true;
+      const loadFavs = async () => {
+        try {
+          const fav = await getFavorites();
+          if (isActive) {
+            setFavorites(fav);
+          }
+        } catch (error) {
+          console.error("Error loading favorites:", error);
+        }
+      };
+      loadFavs();
+      return () => {
+        isActive = false;
+      };
+    }, [])
+  );
+
   useEffect(() => {
     const loadData = async () => {
       try {
-        const favs = await getFavorites();
-        setFavorites(favs);
-
-        await preloadSampleBooks();
-
         const popular = await getPopularBooks();
         setPopularBooks(popular);
 
@@ -46,7 +62,7 @@ const HomeScreen = ({ navigation }) => {
     loadData();
   }, []);
 
-//   this showcases 10 books for each category when user click the category filter
+  //   this showcases 10 books for each category when user click the category filter
   const loadCategoryBooks = async (categoryId) => {
     setCategoryLoading(true);
     try {
@@ -84,16 +100,18 @@ const HomeScreen = ({ navigation }) => {
     }
   };
 
-// show 4 books from the favorite list on the home page
+  // show 4 books from the favorite list on the home page
   const filteredFavorites = favorites
     .filter(
       (book) =>
         (book.title?.toLowerCase() || "").includes(filter.toLowerCase()) ||
-        (book.authors?.join(" ")?.toLowerCase() || "").includes(filter.toLowerCase())
+        (book.authors?.join(" ")?.toLowerCase() || "").includes(
+          filter.toLowerCase()
+        )
     )
     .slice(0, 4);
 
-// Search books, it also shows if the searching book is in the favorite list 
+  // Search books, it also shows if the searching book is in the favorite list
   const handleSearch = async () => {
     if (filter.trim() === "") return;
     try {
@@ -128,7 +146,7 @@ const HomeScreen = ({ navigation }) => {
       </Text>
     </TouchableOpacity>
   );
-// render book information 
+  // render book information
   const renderBookItem = (bookItem) => {
     const book = {
       id: bookItem.id,
@@ -153,7 +171,7 @@ const HomeScreen = ({ navigation }) => {
     );
   };
 
-//   render the category book list 
+  //   render the category book list
   const renderCategoryBooks = () => {
     if (categoryLoading) {
       return <ActivityIndicator size="small" />;
@@ -198,7 +216,7 @@ const HomeScreen = ({ navigation }) => {
         </TouchableOpacity>
       </View>
 
-    {/* display search result  */}
+      {/* display search result  */}
       {searchResults.length > 0 ? (
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Search Results</Text>
@@ -245,7 +263,7 @@ const HomeScreen = ({ navigation }) => {
             <Text style={styles.viewAllButtonText}>View All</Text>
           </TouchableOpacity>
         </View>
-      {/* display favorite list */}
+        {/* display favorite list */}
         {filteredFavorites.length > 0 ? (
           <FlatList
             horizontal
@@ -268,7 +286,7 @@ const HomeScreen = ({ navigation }) => {
           </Text>
         )}
       </View>
-{/* display category section */}
+      {/* display category section */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Browse Categories</Text>
         <FlatList
@@ -289,7 +307,7 @@ const HomeScreen = ({ navigation }) => {
         </View>
         {renderCategoryBooks()}
       </View>
-{/* display popular book section */}
+      {/* display popular book section */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Popular Books</Text>
         {popularBooks.length > 0 ? (

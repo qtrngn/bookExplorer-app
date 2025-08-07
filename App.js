@@ -1,56 +1,37 @@
+import "./src/firebase";
 import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
-import { TouchableOpacity, Text } from "react-native";
-import HomeScreen from "./src/screens/HomeScreen";
-import FavoritesScreen from "./src/screens/FavoritesScreen";
+import BottomTab from "./src/components/BottomTab";
 import BookDetailScreen from "./src/screens/BookDetailScreen";
+import SignInScreen from "./src/screens/SigninScreen";
+import { AuthProvider } from "./src/AuthProvider";
 
 const Stack = createNativeStackNavigator();
 
-const App = () => {
+export default function App() {
   return (
-    <NavigationContainer>
-      <Stack.Navigator
-        screenOptions={{
-          headerStyle: {
-            backgroundColor: "#6200ee",
-          },
-          headerTintColor: "#fff",
-          headerTitleStyle: {
-            fontWeight: "bold",
-          },
-          headerBackTitleVisible: false,
-        }}
-      >
-        <Stack.Screen
-          name="Home"
-          component={HomeScreen}
-          options={({ navigation }) => ({
-            title: "Book Explorer",
-            headerRight: () => (
-              <TouchableOpacity
-                onPress={() => navigation.navigate("Favorites")}
-              >
-                <Text style={{ fontSize: 20, marginRight: 16 }}>❤️</Text>
-              </TouchableOpacity>
-            ),
-          })}
-        />
-        <Stack.Screen
-          name="Favorites"
-          component={FavoritesScreen}
-          options={{ title: "Favorites " }}
-        />
-        <Stack.Screen
-          name="BookDetail"
-          component={BookDetailScreen}
-          options={({ route }) => ({
-            title: route.params?.book?.title || "Book Details",
-          })}
-        />
-      </Stack.Navigator>
-    </NavigationContainer>
-  );
-};
+    <AuthProvider>
+      <NavigationContainer>
+        <Stack.Navigator initialRouteName="BottomTab">
+          {/* Bottom tabs flow */}
+          <Stack.Screen
+            name="BottomTab"
+            component={BottomTab}
+            options={{ headerShown: false }}
+          />
 
-export default App;
+          {/* Book detail shows default dark header */}
+          <Stack.Screen
+            name="BookDetail"
+            component={BookDetailScreen}
+            options={({ route }) => ({
+              title: route.params?.book?.title || "Book Details",
+            })}
+          />
+
+          <Stack.Screen name="SignIn" component={SignInScreen} />
+        </Stack.Navigator>
+      </NavigationContainer>
+    </AuthProvider>
+  );
+}
