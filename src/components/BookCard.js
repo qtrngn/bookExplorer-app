@@ -6,30 +6,40 @@ import {
   StyleSheet,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
 
 const BookCard = ({ book, onPress }) => {
+
+  const title = book.title || book.volumeInfo?.title;
+  const authors = book.authors || book.volumeInfo?.authors || [];
+  const thumbnail = book.thumbnail || book.volumeInfo?.imageLinks?.thumbnail;
+  
   return (
     <TouchableOpacity onPress={onPress} style={styles.card}>
-      {/* Book cover */}
-      <Image
-        source={{ uri: book.thumbnail }}
-        style={styles.thumbnail}
-        resizeMode="cover"
-      />
+      {thumbnail ? (
+        <>
+          <Image
+            source={{ uri: thumbnail }}
+            style={styles.thumbnail}
+            resizeMode="cover"
+          />
+          <LinearGradient
+            colors={['transparent', 'rgba(0,0,0,0.6)']}
+            style={styles.overlay}
+          />
+        </>
+      ) : (
+        <View style={styles.placeholder}>
+          <Ionicons name="book-outline" size={40} color="#654d27" />
+        </View>
+      )}
 
-      {/* Gradient overlay */}
-      <LinearGradient
-        colors={['transparent', 'rgba(0,0,0,0.6)']}
-        style={styles.overlay}
-      />
-
-      {/* Info panel */}
       <View style={styles.info}>
         <Text style={styles.title} numberOfLines={1}>
-          {book.title}
+          {title}
         </Text>
         <Text style={styles.author} numberOfLines={1}>
-          {book.authors?.join(', ') || 'Unknown Author'}
+          {authors.length > 0 ? authors.join(', ') : 'Unknown Author'}
         </Text>
       </View>
     </TouchableOpacity>
@@ -79,6 +89,14 @@ const styles = StyleSheet.create({
   author: {
     color: '#ddd',
     fontSize: 12,
+  },
+  placeholder: {
+    width: '100%',
+    height: '100%',
+    backgroundColor: '#f2e6d4',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: 12,
   },
 });
 

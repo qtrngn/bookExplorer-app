@@ -14,6 +14,12 @@ const BookDetailScreen = ({ route }) => {
   const { book } = route.params;
   const [isSaved, setIsSaved] = useState(false);
 
+   const thumb =
+    book?.thumbnail ||
+    book?.imageLinks?.thumbnail ||
+    book?.volumeInfo?.imageLinks?.thumbnail ||
+    null;
+
   useEffect(() => {
     const checkSaved = async () => {
       const favs = await getFavorites();
@@ -31,10 +37,9 @@ const BookDetailScreen = ({ route }) => {
 
   return (
     <ScrollView style={styles.container}>
-      <Image 
-        source={{ uri: book.thumbnail }} 
-        style={styles.thumbnail} 
-      />
+        {!!thumb && (
+        <Image source={{ uri: thumb }} style={styles.thumbnail} />
+      )}
       <Text style={styles.title}>{book.title}</Text>
       <Text style={styles.author}>
         by {book.authors?.join(', ') || 'Unknown Author'}

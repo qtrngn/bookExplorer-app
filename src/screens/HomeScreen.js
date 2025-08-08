@@ -9,7 +9,6 @@ import {
   SafeAreaView,
   ActivityIndicator,
   TouchableOpacity,
-  Image,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
@@ -168,7 +167,7 @@ export default function HomeScreen({ navigation }) {
       }}
       onPress={() =>
         navigation.navigate("BookDetail", {
-          book: { ...b.volumeInfo, id: b.id },
+          book: { id: b.id, title: b.volumeInfo.title, authors: b.volumeInfo.authors || [], description: b.volumeInfo.description, thumbnail: b.volumeInfo.imageLinks?.thumbnail },
         })
       }
     />
@@ -276,12 +275,7 @@ export default function HomeScreen({ navigation }) {
                   renderItem={({ item }) => (
                     <View style={styles.favCardWrapper}>
                       <BookCard
-                        book={{
-                          id: item.id,
-                          title: item.title,
-                          authors: item.authors,
-                          thumbnail: item.thumbnail,
-                        }}
+                        book={item} 
                         onPress={() =>
                           navigation.navigate("BookDetail", { book: item })
                         }

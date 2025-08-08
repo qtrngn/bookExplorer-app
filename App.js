@@ -1,16 +1,18 @@
-import "./src/firebase";
+ import "./src/firebase";
 import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import BottomTab from "./src/components/BottomTab";
 import BookDetailScreen from "./src/screens/BookDetailScreen";
 import SignInScreen from "./src/screens/SigninScreen";
 import { AuthProvider } from "./src/AuthProvider";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 
 const Stack = createNativeStackNavigator();
 
 export default function App() {
   return (
     <AuthProvider>
+      <GestureHandlerRootView style={{ flex: 1 }}>
       <NavigationContainer>
         <Stack.Navigator initialRouteName="BottomTab">
          
@@ -28,6 +30,7 @@ export default function App() {
           <Stack.Screen name="SignIn" component={SignInScreen} />
         </Stack.Navigator>
       </NavigationContainer>
+      </GestureHandlerRootView>
     </AuthProvider>
   );
 }
