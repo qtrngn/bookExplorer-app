@@ -6,16 +6,22 @@ import {
   StyleSheet,
   Text,
   ScrollView,
+  SafeAreaView,
   ActivityIndicator,
   TouchableOpacity,
+  Image,
 } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
+import { Ionicons } from "@expo/vector-icons";
+import { auth } from "../firebase";
 import { useFocusEffect } from "@react-navigation/native";
 import { getFavorites } from "../data/storage";
 import { getPopularBooks, getBooksByCategory, searchBooks } from "../data/api";
 import BookCard from "../components/BookCard";
 import categories from "../data/categories";
 
-const HomeScreen = ({ navigation }) => {
+export default function HomeScreen({ navigation }) {
+  // ─── State hooks ──────────────────────────────────────────
   const [favorites, setFavorites] = useState([]);
   const [popularBooks, setPopularBooks] = useState([]);
   const [categoryBooks, setCategoryBooks] = useState([]);
@@ -24,109 +30,112 @@ const HomeScreen = ({ navigation }) => {
   const [filter, setFilter] = useState("");
   const [categoryLoading, setCategoryLoading] = useState(false);
   const [searchResults, setSearchResults] = useState([]);
+  const [showSearch, setShowSearch] = useState(false);
 
+  // ─── Signed-in user’s name ────────────────────────────────
+  const userName =
+    auth.currentUser?.displayName ||
+    auth.currentUser?.email?.split("@")[0] ||
+    "You";
+
+  // ─── Load favorites on focus ───────────────────────────────
   useFocusEffect(
     React.useCallback(() => {
       let isActive = true;
-      const loadFavs = async () => {
+      (async () => {
         try {
           const fav = await getFavorites();
-          if (isActive) {
-            setFavorites(fav);
-          }
-        } catch (error) {
-          console.error("Error loading favorites:", error);
+          if (isActive) setFavorites(fav);
+        } catch (err) {
+          console.error("Error loading favorites:", err);
         }
-      };
-      loadFavs();
+      })();
       return () => {
         isActive = false;
       };
     }, [])
   );
 
+  // ─── Initial load: popular + default category ──────────────
   useEffect(() => {
-    const loadData = async () => {
+    (async () => {
       try {
         const popular = await getPopularBooks();
         setPopularBooks(popular);
-
         await loadCategoryBooks("fiction");
-      } catch (error) {
-        console.error("Data loading error:", error);
+      } catch (err) {
+        console.error("Data loading error:", err);
       } finally {
         setLoading(false);
       }
-    };
-
-    loadData();
+    })();
   }, []);
 
-  //   this showcases 10 books for each category when user click the category filter
+  // ─── Fetch books for a category ────────────────────────────
   const loadCategoryBooks = async (categoryId) => {
     setCategoryLoading(true);
     try {
-      const category = categories.find((c) => c.id === categoryId);
-      if (!category || !category.query) {
-        console.error("Category undefined:", categoryId);
-        return;
-      }
-
+      const cat = categories.find((c) => c.id === categoryId);
+      if (!cat?.query) throw new Error("Invalid category");
       setSelectedCategory(categoryId);
 
       let books = [];
       if (categoryId === "other") {
-        const allBooks = await getBooksByCategory("books");
-        books = allBooks
-          .filter((book) => {
-            const subjects = book.volumeInfo.categories || [];
-            return !subjects.some((subject) =>
+        const all = await getBooksByCategory("books");
+        books = all
+          .filter((b) => {
+            const subjects = b.volumeInfo.categories || [];
+            return !subjects.some((s) =>
               categories
                 .filter((c) => c.id !== "other")
-                .some((cat) =>
-                  subject.toLowerCase().includes(cat.name.toLowerCase())
-                )
+                .some((c2) => s.toLowerCase().includes(c2.name.toLowerCase()))
             );
           })
           .slice(0, 10);
       } else {
-        books = await getBooksByCategory(category.query);
+        books = await getBooksByCategory(cat.query);
       }
       setCategoryBooks(books);
-    } catch (error) {
-      console.error("Category load error:", error);
+    } catch (err) {
+      console.error("Category load error:", err);
     } finally {
       setCategoryLoading(false);
     }
   };
 
-  // show 4 books from the favorite list on the home page
+  // ─── Top-4 filtered favorites ───────────────────────────────
   const filteredFavorites = favorites
     .filter(
       (book) =>
-        (book.title?.toLowerCase() || "").includes(filter.toLowerCase()) ||
-        (book.authors?.join(" ")?.toLowerCase() || "").includes(
-          filter.toLowerCase()
-        )
+        book.title.toLowerCase().includes(filter.toLowerCase()) ||
+        book.authors.join(" ").toLowerCase().includes(filter.toLowerCase())
     )
     .slice(0, 4);
 
-  // Search books, it also shows if the searching book is in the favorite list
-  const handleSearch = async () => {
-    if (filter.trim() === "") return;
-    try {
-      const books = await searchBooks(filter);
-      setSearchResults(books);
-    } catch (error) {
-      console.error("Search failed:", error);
-      setSearchResults([]);
-    }
-  };
+  // ─── Live search on filter/showSearch changes ──────────────
+  useEffect(() => {
+    let isActive = true;
+    (async () => {
+      try {
+        if (showSearch && filter.trim()) {
+          const books = await searchBooks(filter.trim());
+          if (isActive) setSearchResults(books);
+        } else {
+          setSearchResults([]);
+        }
+      } catch {
+        if (isActive) setSearchResults([]);
+      }
+    })();
+    return () => {
+      isActive = false;
+    };
+  }, [filter, showSearch]);
 
-  const viewAllFavorites = () => {
-    navigation.navigate("Favorites");
-  };
+  // ─── Navigate to Favorites screen ─────────────────────────
+  const viewAllFavorites = () => navigation.navigate("Favorites");
 
+  // ─── Render helpers ────────────────────────────────────────
   const renderCategory = ({ item }) => (
     <TouchableOpacity
       style={[
@@ -137,62 +146,51 @@ const HomeScreen = ({ navigation }) => {
     >
       <Text style={styles.categoryHolder}>{item.icon}</Text>
       <Text
-        style={[
-          styles.categoryText,
-          selectedCategory === item.id && styles.selectedCategoryText,
-        ]}
+        style={
+          selectedCategory === item.id
+            ? styles.selectedCategoryText
+            : styles.categoryText
+        }
       >
         {item.name}
       </Text>
     </TouchableOpacity>
   );
-  // render book information
-  const renderBookItem = (bookItem) => {
-    const book = {
-      id: bookItem.id,
-      title: bookItem.volumeInfo.title,
-      authors: bookItem.volumeInfo.authors || ["Unknown"],
-      thumbnail: bookItem.volumeInfo.imageLinks?.thumbnail,
-      categories: bookItem.volumeInfo.categories || ["Uncategorized"],
-    };
 
-    return (
-      <BookCard
-        book={book}
-        onPress={() =>
-          navigation.navigate("BookDetail", {
-            book: {
-              ...book,
-              description: bookItem.volumeInfo.description,
-            },
-          })
-        }
+  const renderBookItem = (b) => (
+    <BookCard
+      book={{
+        id: b.id,
+        title: b.volumeInfo.title,
+        authors: b.volumeInfo.authors || ["Unknown"],
+        thumbnail: b.volumeInfo.imageLinks?.thumbnail,
+        categories: b.volumeInfo.categories || [],
+      }}
+      onPress={() =>
+        navigation.navigate("BookDetail", {
+          book: { ...b.volumeInfo, id: b.id },
+        })
+      }
+    />
+  );
+
+  const renderCategoryBooks = () =>
+    categoryLoading ? (
+      <ActivityIndicator size="small" />
+    ) : categoryBooks.length > 0 ? (
+      <FlatList
+        horizontal
+        data={categoryBooks}
+        keyExtractor={(i) => i.id}
+        renderItem={({ item }) => renderBookItem(item)}
+        contentContainerStyle={styles.listContent}
+        showsHorizontalScrollIndicator={false}
       />
+    ) : (
+      <Text style={styles.emptyText}>No books in this category</Text>
     );
-  };
 
-  //   render the category book list
-  const renderCategoryBooks = () => {
-    if (categoryLoading) {
-      return <ActivityIndicator size="small" />;
-    } else if (categoryBooks.length > 0) {
-      return (
-        <FlatList
-          horizontal
-          data={categoryBooks}
-          keyExtractor={(item) => item.id}
-          renderItem={({ item }) => renderBookItem(item)}
-          contentContainerStyle={styles.listContent}
-          showsHorizontalScrollIndicator={false}
-        />
-      );
-    } else {
-      return (
-        <Text style={styles.emptyText}>No books found in this category</Text>
-      );
-    }
-  };
-
+  // ─── Loading spinner ───────────────────────────────────────
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
@@ -201,198 +199,250 @@ const HomeScreen = ({ navigation }) => {
     );
   }
 
+  // ─── Main UI ───────────────────────────────────────────────
   return (
-    <ScrollView style={styles.container}>
-      <View style={styles.searchContainer}>
-        <TextInput
-          style={styles.searchInput}
-          placeholder="Search books..."
-          value={filter}
-          onChangeText={setFilter}
-          onSubmitEditing={handleSearch}
-        />
-        <TouchableOpacity style={styles.searchButton} onPress={handleSearch}>
-          <Text style={styles.searchButtonText}>Search</Text>
-        </TouchableOpacity>
-      </View>
+    <View style={styles.root}>
+      <LinearGradient
+        colors={["#654d27", "#f2e6d4"]}
+        style={StyleSheet.absoluteFill}
+      />
 
-      {/* display search result  */}
-      {searchResults.length > 0 ? (
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Search Results</Text>
-          <FlatList
-            horizontal
-            data={searchResults}
-            keyExtractor={(item) => item.id}
-            renderItem={({ item }) => (
-              <BookCard
-                book={{
-                  id: item.id,
-                  title: item.volumeInfo.title,
-                  authors: item.volumeInfo.authors || ["Unknown"],
-                  thumbnail: item.volumeInfo.imageLinks?.thumbnail,
-                  categories: item.volumeInfo.categories || [],
-                }}
-                onPress={() =>
-                  navigation.navigate("BookDetail", {
-                    book: {
-                      id: item.id,
-                      title: item.volumeInfo.title,
-                      authors: item.volumeInfo.authors || ["Unknown"],
-                      thumbnail: item.volumeInfo.imageLinks?.thumbnail,
-                      categories: item.volumeInfo.categories || [],
-                      description: item.volumeInfo.description,
-                    },
-                  })
-                }
+      <SafeAreaView style={styles.safeArea}>
+        <ScrollView
+          contentContainerStyle={styles.contentContainer}
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Hero header + search icon */}
+          <View style={styles.heroHeader}>
+            <View>
+              <Text style={styles.greeting}>Hello, {userName}!</Text>
+              <Text style={styles.subheading}>What are you reading today?</Text>
+            </View>
+            <TouchableOpacity onPress={() => setShowSearch(true)}>
+              <Ionicons name="search" size={28} color="#c3b095ff" />
+            </TouchableOpacity>
+          </View>
+
+          {/* Search input */}
+          {showSearch && (
+            <View style={styles.searchContainer}>
+              <TextInput
+                style={styles.searchInput}
+                placeholder="Search books..."
+                value={filter}
+                onChangeText={setFilter}
+                autoFocus
+                onBlur={() => setShowSearch(false)}
               />
-            )}
-            contentContainerStyle={styles.listContent}
-            showsHorizontalScrollIndicator={false}
-          />
-        </View>
-      ) : null}
+            </View>
+          )}
 
-      <View style={styles.section}>
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Your Favorites</Text>
-          <TouchableOpacity
-            style={styles.viewAllButton}
-            onPress={viewAllFavorites}
-          >
-            <Text style={styles.viewAllButtonText}>View All</Text>
-          </TouchableOpacity>
-        </View>
-        {/* display favorite list */}
-        {filteredFavorites.length > 0 ? (
-          <FlatList
-            horizontal
-            data={filteredFavorites}
-            keyExtractor={(item) => item.id}
-            renderItem={({ item }) => (
-              <BookCard
-                book={item}
-                onPress={() =>
-                  navigation.navigate("BookDetail", { book: item })
-                }
+          {/* Search results */}
+          {showSearch && searchResults.length > 0 && (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Search Results</Text>
+              <FlatList
+                horizontal
+                data={searchResults}
+                keyExtractor={(i) => i.id}
+                renderItem={({ item }) => renderBookItem(item)}
+                contentContainerStyle={styles.listContent}
+                showsHorizontalScrollIndicator={false}
               />
-            )}
-            contentContainerStyle={styles.listContent}
-            showsHorizontalScrollIndicator={false}
-          />
-        ) : (
-          <Text style={styles.emptyText}>
-            No favorites found. Try to add some books!
-          </Text>
-        )}
-      </View>
-      {/* display category section */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Browse Categories</Text>
-        <FlatList
-          horizontal
-          data={categories}
-          keyExtractor={(item) => item.id}
-          renderItem={renderCategory}
-          contentContainerStyle={styles.categoriesContainer}
-          showsHorizontalScrollIndicator={false}
-        />
-      </View>
+            </View>
+          )}
 
-      <View style={styles.section}>
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>
-            {categories.find((c) => c.id === selectedCategory)?.name} Books
-          </Text>
-        </View>
-        {renderCategoryBooks()}
-      </View>
-      {/* display popular book section */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Popular Books</Text>
-        {popularBooks.length > 0 ? (
-          <FlatList
-            horizontal
-            data={popularBooks}
-            keyExtractor={(item) => item.id}
-            renderItem={({ item }) => renderBookItem(item)}
-            contentContainerStyle={styles.listContent}
-          />
-        ) : (
-          <Text style={styles.emptyText}>Could not load popular books</Text>
-        )}
-      </View>
-    </ScrollView>
+          {/* No results message */}
+          {showSearch &&
+            filter.trim().length > 0 &&
+            searchResults.length === 0 && (
+              <Text style={styles.noBooksText}>No books available</Text>
+            )}
+
+          {/* ─── Favorites Card ──────────────────────────────── */}
+          <View style={styles.featuredCard}>
+            <Text style={styles.featuredTitle}>Your Favorite Books 🎉</Text>
+
+            {filteredFavorites.length > 0 ? (
+              <>
+                <Text style={styles.featuredSubtitle}>
+                  You’ve got {filteredFavorites.length} awesome{" "}
+                  {filteredFavorites.length === 1 ? "pick" : "picks"} waiting!
+                </Text>
+                <FlatList
+                  horizontal
+                  data={filteredFavorites}
+                  keyExtractor={(item) => item.id}
+                  renderItem={({ item }) => (
+                    <View style={styles.favCardWrapper}>
+                      <BookCard
+                        book={{
+                          id: item.id,
+                          title: item.title,
+                          authors: item.authors,
+                          thumbnail: item.thumbnail,
+                        }}
+                        onPress={() =>
+                          navigation.navigate("BookDetail", { book: item })
+                        }
+                      />
+                    </View>
+                  )}
+                  contentContainerStyle={styles.favListContent}
+                  showsHorizontalScrollIndicator={false}
+                />
+              </>
+            ) : (
+              <Text style={styles.featuredSubtitle}>
+                Your shelf is empty… Time to add some page-turners! 📚
+              </Text>
+            )}
+
+            <TouchableOpacity
+              style={styles.readNowBtn}
+              onPress={viewAllFavorites}
+            >
+              <Text style={styles.readNowText}>
+                {filteredFavorites.length > 0
+                  ? "Show Me My Favorites"
+                  : "Browse Books"}
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* ─── Browse Categories ───────────────────────────── */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Categories</Text>
+            <FlatList
+              horizontal
+              data={categories}
+              keyExtractor={(i) => i.id}
+              renderItem={renderCategory}
+              contentContainerStyle={styles.categoriesContainer}
+              showsHorizontalScrollIndicator={false}
+            />
+          </View>
+
+          {/* ─── Category Books ──────────────────────────────── */}
+          <View style={styles.section}>{renderCategoryBooks()}</View>
+
+          {/* ─── Popular Books ──────────────────────────────── */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Popular</Text>
+            {popularBooks.length > 0 ? (
+              <FlatList
+                horizontal
+                data={popularBooks}
+                keyExtractor={(i) => i.id}
+                renderItem={({ item }) => renderBookItem(item)}
+                contentContainerStyle={styles.listContent}
+                showsHorizontalScrollIndicator={false}
+              />
+            ) : (
+              <Text style={styles.emptyText}>Could not load popular books</Text>
+            )}
+          </View>
+        </ScrollView>
+      </SafeAreaView>
+    </View>
   );
-};
+}
 
 const styles = StyleSheet.create({
-  container: {
+  root: {
     flex: 1,
-    padding: 16,
-    backgroundColor: "#f5f5f5",
   },
-  loadingContainer: {
+  safeArea: {
     flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
   },
-  searchContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 16,
+  contentContainer: {
+    padding: 20,
+    paddingBottom: 80,
   },
-  searchButton: {
-    backgroundColor: "#6200ee",
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-  },
-  searchButtonText: {
-    color: "white",
-    fontWeight: "bold",
-    fontSize: 16,
-  },
-  searchInput: {
-    flex: 1,
-    backgroundColor: "white",
-    borderWidth: 1,
-    borderColor: "#ddd",
-    borderRadius: 8,
-    padding: 12,
-    marginRight: 8,
-  },
-  section: {
-    marginBottom: 24,
-  },
-  sectionHeader: {
+
+  heroHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
+    marginBottom: 16,
+    marginTop: 26,
+  },
+  greeting: {
+    color: "#fff",
+    fontSize: 20,
+    fontWeight: "500",
+  },
+  subheading: {
+    color: "#fff",
+    fontSize: 24,
+    fontWeight: "bold",
+    marginTop: 4,
+  },
+
+  searchContainer: {
+    marginBottom: 24,
+  },
+  searchInput: {
+    backgroundColor: "#fff",
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    height: 44,
+  },
+
+  noBooksText: {
+    textAlign: "center",
+    color: "#fff",
+    marginBottom: 24,
+    fontStyle: "italic",
+  },
+
+  featuredCard: {
+    backgroundColor: "#e5ff6f",
+    borderRadius: 20,
+    padding: 20,
+    marginBottom: 32,
+  },
+  featuredTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    marginBottom: 6,
+  },
+  featuredSubtitle: {
+    fontSize: 14,
+    color: "fff",
     marginBottom: 12,
+  },
+  favListContent: {
+    paddingVertical: 8,
+  },
+  favCardWrapper: {
+    marginRight: 12,
+  },
+  readNowBtn: {
+    backgroundColor: "#654d27",
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    alignSelf: "flex-start",
+    marginTop: 12,
+  },
+  readNowText: {
+    color: "#fff",
+    fontWeight: "bold",
+  },
+
+  section: {
+    marginBottom: 10,
   },
   sectionTitle: {
     fontSize: 20,
     fontWeight: "bold",
+    marginBottom: 12,
+    color: "#654d27",
   },
-  viewAllButton: {
-    backgroundColor: "#6200ee",
-    paddingVertical: 5,
-    paddingHorizontal: 10,
-    borderRadius: 8,
-  },
-  viewAllButtonText: {
-    color: "white",
-    fontWeight: "bold",
-    fontSize: 16,
-    letterSpacing: 0.5,
-  },
+
   listContent: {
     paddingBottom: 12,
-  },
-  favoriteCard: {
-    width: 180,
-    marginRight: 12,
   },
   emptyText: {
     textAlign: "center",
@@ -400,32 +450,40 @@ const styles = StyleSheet.create({
     fontStyle: "italic",
     marginVertical: 16,
   },
+
   categoriesContainer: {
     paddingBottom: 10,
   },
   categoryButton: {
-    padding: 12,
-    marginRight: 10,
-    backgroundColor: "#f0f0f0",
-    borderRadius: 8,
+    flexDirection: "row",
+    height: 40,
     alignItems: "center",
-    minWidth: 80,
+    justifyContent: "center",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    marginRight: 8,
+    backgroundColor: "#dfef6d",
+    borderRadius: 30,
   },
   selectedCategory: {
-    backgroundColor: "#6200ee",
+    backgroundColor: "#654d27",
   },
   categoryHolder: {
-    fontSize: 24,
-    marginBottom: 6,
+    fontSize: 20,
   },
   categoryText: {
     fontSize: 14,
-    textAlign: "center",
     color: "#333",
+    fontWeight: 800,
+    marginRight: 4,
   },
   selectedCategoryText: {
-    color: "white",
+    color: "#dfef6d",
+  },
+
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
   },
 });
-
-export default HomeScreen;

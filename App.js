@@ -13,20 +13,16 @@ export default function App() {
     <AuthProvider>
       <NavigationContainer>
         <Stack.Navigator initialRouteName="BottomTab">
-          {/* Bottom tabs flow */}
+         
           <Stack.Screen
             name="BottomTab"
             component={BottomTab}
             options={{ headerShown: false }}
           />
-
-          {/* Book detail shows default dark header */}
+        
           <Stack.Screen
             name="BookDetail"
             component={BookDetailScreen}
-            options={({ route }) => ({
-              title: route.params?.book?.title || "Book Details",
-            })}
           />
 
           <Stack.Screen name="SignIn" component={SignInScreen} />

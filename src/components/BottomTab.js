@@ -1,10 +1,9 @@
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { View, StyleSheet } from "react-native";
 import { Ionicons, MaterialIcons } from "@expo/vector-icons";
-import Header from "../components/Header";
 import HomeScreen from "../screens/HomeScreen";
 import FavoritesScreen from "../screens/FavoritesScreen";
-import SignIn from "../screens/SigninScreen"
+import SignIn from "../screens/SigninScreen";
 
 const Tab = createBottomTabNavigator();
 
@@ -12,10 +11,9 @@ const BottomTab = () => {
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
-        headerShown: true,
-        header: () => <Header title={route.name} />,
         tabBarShowLabel: false,
         tabBarStyle: styles.tabBar,
+        headerShown: false,
 
         tabBarIcon: ({ focused }) => {
           let IconComp, iconName;
@@ -55,28 +53,31 @@ const styles = StyleSheet.create({
   tabBar: {
     position: "absolute",
     bottom: 25,
-    height: 70,
-    marginLeft: 75,
+    height: 65,
+    marginLeft: 65,
     width: 280,
     borderRadius: 40,
     backgroundColor: "#4f3713",
     flexDirection: "row",
-    justifyContent: "center",
+    justifyContent: "space-around",
     alignItems: "center",
-    borderTopWidth: 0,   
+    borderTopWidth: 0,
+    overflow: "hidden",
+    shadowColor: "transparent",
+    shadowOpacity: 0,
+    elevation: 0, 
   },
   iconWrapper: {
     width: 60,
     height: 60,
-    marginTop: 5,
-    width: "100%",
     alignItems: "center",
-    justifyContent: "space-around",
+    justifyContent: "center",
+   marginBottom: 5,
   },
   iconWrapperActive: {
     backgroundColor: "#654d27ff",
-    width: 60,
-    height: 60,
+    width: 50,
+    height: 50,
     alignItems: "center",
     justifyContent: "center",
     borderRadius: 50,

@@ -8,6 +8,8 @@ export const getFavorites = async () => {
     try {
         const favoritesList = await AsyncStorage.getItem(BOOKS);
         return favoritesList ? JSON.parse(favoritesList) : [];
+
+        
     } catch (error) {
         console.error ('Cannot load the favorite list:', error);
         return []; 
