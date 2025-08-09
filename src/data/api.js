@@ -1,76 +1,141 @@
+// api/books.js
 import axios from "axios";
 
 const BASE_URL = "https://www.googleapis.com/books/v1/volumes";
 const API_KEY = "AIzaSyA5-31sFipctPDBmK1o51Q2itdj2GLjeoY";
 
+// One axios client with the key applied everywhere
+const client = axios.create({
+  baseURL: BASE_URL,
+  params: { key: API_KEY },
+});
+
+// Request only what we need (smaller/faster)
+const FIELDS_LIST =
+  "items(id,volumeInfo(title,authors,description,publishedDate,language,pageCount,imageLinks,previewLink,infoLink,canonicalVolumeLink),accessInfo(webReaderLink))";
+
+const FIELDS_DETAIL =
+  "id,volumeInfo(title,authors,description,publishedDate,language,pageCount,imageLinks,previewLink,infoLink,canonicalVolumeLink),accessInfo(webReaderLink)";
+
+function stripHtml(html = "") {
+  return html.replace(/<[^>]*>/g, "").replace(/&nbsp;?/g, " ").trim();
+}
+
+function pickThumb(links = {}) {
+  return (
+    links.extraLarge ||
+    links.large ||
+    links.medium ||
+    links.small ||
+    links.thumbnail ||
+    links.smallThumbnail ||
+    null
+  );
+}
+
+function normalizeVolume(item = {}) {
+  const v = item.volumeInfo || {};
+  const a = item.accessInfo || {};
+
+  const out = {
+    id: item.id || "",
+    title: v.title || "Untitled",
+    authors: v.authors || [],
+    description: stripHtml(v.description || ""),
+    publishedDate: v.publishedDate || "",
+    language: (v.language || "").toUpperCase(),
+    pageCount: v.pageCount ?? null,
+    thumbnail: pickThumb(v.imageLinks || {}),
+    // links
+    webReaderLink: a.webReaderLink || null,
+    previewLink: v.previewLink || null,
+    infoLink: v.infoLink || null,
+    canonicalVolumeLink: v.canonicalVolumeLink || null,
+    // computed shortcut
+    readerLink:
+      a.webReaderLink ||
+      v.previewLink ||
+      v.infoLink ||
+      v.canonicalVolumeLink ||
+      null,
+    // keep raw imageLinks if you need variations later
+    imageLinks: v.imageLinks || undefined,
+  };
+
+  return out;
+}
+
+// ---------- public API ----------
 export const searchBooks = async (query) => {
   try {
-    const response = await axios.get(BASE_URL, {
+    const { data } = await client.get("/", {
       params: {
         q: query,
-        maxResults: 20,
         printType: "books",
+        maxResults: 20,
+        orderBy: "relevance",
+        fields: FIELDS_LIST,
       },
     });
-    return response.data.items || [];
+    return (data.items || []).map(normalizeVolume);
   } catch (error) {
     console.error("Cannot fetch data:", error);
     return [];
   }
 };
 
-// Get popular books and display it on the homepage
 export const getPopularBooks = async () => {
   try {
-    const response = await axios.get(BASE_URL, {
+    const { data } = await client.get("/", {
       params: {
         q: "subject:general",
+        printType: "books",
         maxResults: 10,
         orderBy: "relevance",
-        printType: "books",
-        key: API_KEY
+        fields: FIELDS_LIST,
       },
     });
-    return response.data.items || [];
+    return (data.items || []).map(normalizeVolume);
   } catch (error) {
     console.error("Cannot fetch popular books:", error);
     return [];
   }
 };
 
-// get book detail
-export const getBookDetails = async (id) => {
+export const getBooksByCategory = async (categoryQuery) => {
+  if (typeof categoryQuery !== "string" || !categoryQuery.trim()) {
+    console.error("Invalid category query:", categoryQuery);
+    return [];
+  }
   try {
-    const response = await axios.get(`${BASE_URL}/${id}`, {
+    const { data } = await client.get("/", {
       params: {
-        key: API_KEY
-      }
+        q: categoryQuery, // e.g., "subject:fiction"
+        maxResults: 10,
+        orderBy: "relevance",
+        printType: "books",
+        fields: FIELDS_LIST,
+      },
     });
-    return response.data;
+    return (data.items || []).map(normalizeVolume);
   } catch (error) {
-    console.error("Cannot fetch book detail: ", error);
-    return null;
+    console.error("Category books error:", error);
+    return [];
   }
 };
 
-// get book by categories
-export const getBooksByCategory = async (categoryQuery) => {
-  if (typeof categoryQuery !== 'string' || !categoryQuery.trim())  {
-    console.error('Invalid category query:', categoryQuery)
-  return [];
-  }
+// Hydrate a single book (detail page) and keep the same normalized shape
+export const getBookDetails = async (id, base = null) => {
   try {
-    const response = await axios.get(BASE_URL, {
-      params: {
-        q: categoryQuery,
-        maxResults: 10,
-        orderBy: 'relevance',
-        key: API_KEY
-      }
+    const { data } = await client.get(`/${encodeURIComponent(id)}`, {
+      params: { fields: FIELDS_DETAIL },
     });
-    return response.data.items || [];
+    const normalized = normalizeVolume(data);
+    // If you passed a base item (from list/favorites), merge it in
+    return { ...base, ...normalized, id: normalized.id || (base?.id || id) };
   } catch (error) {
-    console.error ('Category books error:', error);
-    return [];
+    console.error("Cannot fetch book detail:", error);
+    // Fallback to whatever we already had
+    return base || null;
   }
-}
+};

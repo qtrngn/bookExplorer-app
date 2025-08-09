@@ -156,22 +156,27 @@ export default function HomeScreen({ navigation }) {
     </TouchableOpacity>
   );
 
-  const renderBookItem = (b) => (
-    <BookCard
-      book={{
-        id: b.id,
-        title: b.volumeInfo.title,
-        authors: b.volumeInfo.authors || ["Unknown"],
-        thumbnail: b.volumeInfo.imageLinks?.thumbnail,
-        categories: b.volumeInfo.categories || [],
-      }}
-      onPress={() =>
-        navigation.navigate("BookDetail", {
-          book: { id: b.id, title: b.volumeInfo.title, authors: b.volumeInfo.authors || [], description: b.volumeInfo.description, thumbnail: b.volumeInfo.imageLinks?.thumbnail },
-        })
-      }
-    />
+  const renderBookItem = (b) => {
+    const book = {
+   id: b?.id,
+   title: b?.title ?? b?.volumeInfo?.title ?? "Untitled",
+   authors: b?.authors ?? b?.volumeInfo?.authors ?? ["Unknown"],
+     thumbnail:
+       b?.thumbnail ??
+       b?.imageLinks?.thumbnail ??
+       b?.volumeInfo?.imageLinks?.thumbnail ??
+      null,
+    categories: b?.categories ?? b?.volumeInfo?.categories ?? [],
+     description: b?.description ?? b?.volumeInfo?.description ?? "",
+   };
+   return (
+     <BookCard
+       book={book}
+      onPress={() => navigation.navigate("BookDetail", { book })}
+     />
   );
+}
+
 
   const renderCategoryBooks = () =>
     categoryLoading ? (

@@ -209,7 +209,6 @@ const styles = StyleSheet.create({
     borderRadius: THEME.radius,
   },
 
-  // Card (unchanged styling)
   card: {
     flex: 1,
     backgroundColor: THEME.surface,
@@ -261,7 +260,14 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  deleteText: { color: "#fff", fontWeight: "700" },
+  deleteText: { 
+    color: "#fff", 
+    fontWeight: "700" 
+  },
 
-  center: { justifyContent: "center", alignItems: "center", flex: 1 },
+  center: { 
+    justifyContent: "center", 
+    alignItems: "center", 
+    flex: 1 
+  },
 });
