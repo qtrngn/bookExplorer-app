@@ -1,4 +1,3 @@
-// BookDetailScreen.jsx
 import { useState, useEffect, useLayoutEffect } from 'react';
 import {
   View,
@@ -11,7 +10,7 @@ import {
   Linking,
 } from 'react-native';
 import { addFavorite, getFavorites } from '../data/storage';
-import { getBookDetails } from '../data/api'; // uses your normalized API
+import { getBookDetails } from '../data/api'; 
 
 const THEME = {
   bg: '#f2e6d4',
@@ -30,10 +29,12 @@ export default function BookDetailScreen({ route, navigation }) {
   const [isSaved, setIsSaved] = useState(false);
   const [loadingExtra, setLoadingExtra] = useState(true);
 
+  // Hide header
   useLayoutEffect(() => {
     navigation.setOptions({ headerShown: false });
   }, [navigation]);
 
+// Fetch extra detail by ID
   useEffect(() => {
     let alive = true;
     (async () => {
@@ -50,6 +51,7 @@ export default function BookDetailScreen({ route, navigation }) {
     };
   }, [base?.id]);
 
+  // Check if this book is already in favorites
   useEffect(() => {
     (async () => {
       const favs = (await getFavorites()) || [];
@@ -58,6 +60,7 @@ export default function BookDetailScreen({ route, navigation }) {
     })();
   }, [base?.id, bookFull?.id]);
 
+  // Ensure that there are safe fallbacks
   const title =
     bookFull?.title ??
     base?.title ??
@@ -102,6 +105,7 @@ export default function BookDetailScreen({ route, navigation }) {
     base?.volumeInfo?.pageCount ??
     null;
 
+    // Preview link, I added this but never tested it because I use android simulator, I will get back to it late 
   const readerLink =
     bookFull?.readerLink ??
     bookFull?.webReaderLink ??
@@ -110,6 +114,7 @@ export default function BookDetailScreen({ route, navigation }) {
     bookFull?.canonicalVolumeLink ??
     null;
 
+    // Save to favorite
   const handleSave = async () => {
     const toSave = { ...base, ...bookFull };
     await addFavorite(toSave);
@@ -117,6 +122,7 @@ export default function BookDetailScreen({ route, navigation }) {
     Alert.alert('Saved!', `${title} has been added to your favorites.`);
   };
 
+  // Open preview if it is available
   const openReader = async () => {
     if (!readerLink) return;
     const can = await Linking.canOpenURL(readerLink);
@@ -137,7 +143,7 @@ export default function BookDetailScreen({ route, navigation }) {
         <Text style={styles.closeTxt}>✕</Text>
       </Pressable>
 
-      {/* HERO */}
+      {/* Hero */}
       <View style={styles.hero}>
         {!!thumb && (
           <View style={styles.coverWrap}>
@@ -169,7 +175,7 @@ export default function BookDetailScreen({ route, navigation }) {
           {!!pages && <Chip>{pages} pages</Chip>}
         </View>
 
-        {/* CTAs */}
+        {/* Button */}
         <View style={styles.ctaRow}>
           {readerLink ? (
             <Pressable
@@ -213,7 +219,7 @@ export default function BookDetailScreen({ route, navigation }) {
         </View>
       </View>
 
-      {/* BODY */}
+      {/* Body */}
       <View style={styles.body}>
         <Text style={styles.sectionTitle}>Description</Text>
         <Text style={styles.description}>{description}</Text>

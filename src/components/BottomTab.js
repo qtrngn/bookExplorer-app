@@ -3,7 +3,7 @@ import { View, StyleSheet } from "react-native";
 import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import HomeScreen from "../screens/HomeScreen";
 import FavoritesScreen from "../screens/FavoritesScreen";
-import SignIn from "../screens/SigninScreen";
+import Profile from "../screens/ProfileScreen";
 
 const Tab = createBottomTabNavigator();
 
@@ -44,7 +44,7 @@ const BottomTab = () => {
     >
       <Tab.Screen name="Home" component={HomeScreen} />
       <Tab.Screen name="Favorites" component={FavoritesScreen} />
-      <Tab.Screen name="Profile" component={SignIn} />
+      <Tab.Screen name="Profile" component={Profile} />
     </Tab.Navigator>
   );
 };

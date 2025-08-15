@@ -20,7 +20,7 @@ import BookCard from "../components/BookCard";
 import categories from "../data/categories";
 
 export default function HomeScreen({ navigation }) {
-  // ─── State hooks ──────────────────────────────────────────
+
   const [favorites, setFavorites] = useState([]);
   const [popularBooks, setPopularBooks] = useState([]);
   const [categoryBooks, setCategoryBooks] = useState([]);
@@ -31,13 +31,13 @@ export default function HomeScreen({ navigation }) {
   const [searchResults, setSearchResults] = useState([]);
   const [showSearch, setShowSearch] = useState(false);
 
-  // ─── Signed-in user’s name ────────────────────────────────
+  // Signin users will display the name on the header, if user is not signed in, it will display "you" instead 
   const userName =
     auth.currentUser?.displayName ||
     auth.currentUser?.email?.split("@")[0] ||
     "You";
 
-  // ─── Load favorites on focus ───────────────────────────────
+  // Load favorites whenever user return to homescreen 
   useFocusEffect(
     React.useCallback(() => {
       let isActive = true;
@@ -55,7 +55,7 @@ export default function HomeScreen({ navigation }) {
     }, [])
   );
 
-  // ─── Initial load: popular + default category ──────────────
+  // Load popular list and default category 
   useEffect(() => {
     (async () => {
       try {
@@ -70,7 +70,7 @@ export default function HomeScreen({ navigation }) {
     })();
   }, []);
 
-  // ─── Fetch books for a category ────────────────────────────
+  // Fetch books for a category
   const loadCategoryBooks = async (categoryId) => {
     setCategoryLoading(true);
     try {
@@ -102,7 +102,7 @@ export default function HomeScreen({ navigation }) {
     }
   };
 
-  // ─── Top-4 filtered favorites ───────────────────────────────
+  // Top-4 filtered favorites 
   const filteredFavorites = favorites
     .filter(
       (book) =>
@@ -111,7 +111,7 @@ export default function HomeScreen({ navigation }) {
     )
     .slice(0, 4);
 
-  // ─── Live search on filter/showSearch changes ──────────────
+  // Show search result while searching
   useEffect(() => {
     let isActive = true;
     (async () => {
@@ -131,10 +131,10 @@ export default function HomeScreen({ navigation }) {
     };
   }, [filter, showSearch]);
 
-  // ─── Navigate to Favorites screen ─────────────────────────
+  // Navigate to Favorites screen 
   const viewAllFavorites = () => navigation.navigate("Favorites");
 
-  // ─── Render helpers ────────────────────────────────────────
+  //  Render categories list 
   const renderCategory = ({ item }) => (
     <TouchableOpacity
       style={[
@@ -156,6 +156,7 @@ export default function HomeScreen({ navigation }) {
     </TouchableOpacity>
   );
 
+  // Render books
   const renderBookItem = (b) => {
     const book = {
    id: b?.id,
@@ -177,7 +178,7 @@ export default function HomeScreen({ navigation }) {
   );
 }
 
-
+// render category books
   const renderCategoryBooks = () =>
     categoryLoading ? (
       <ActivityIndicator size="small" />
@@ -194,7 +195,7 @@ export default function HomeScreen({ navigation }) {
       <Text style={styles.emptyText}>No books in this category</Text>
     );
 
-  // ─── Loading spinner ───────────────────────────────────────
+  // Loading spinner 
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
@@ -203,7 +204,7 @@ export default function HomeScreen({ navigation }) {
     );
   }
 
-  // ─── Main UI ───────────────────────────────────────────────
+  //  The screen background
   return (
     <View style={styles.root}>
       <LinearGradient
@@ -216,7 +217,7 @@ export default function HomeScreen({ navigation }) {
           contentContainerStyle={styles.contentContainer}
           showsVerticalScrollIndicator={false}
         >
-          {/* Hero header + search icon */}
+          {/* Hero and search icon */}
           <View style={styles.heroHeader}>
             <View>
               <Text style={styles.greeting}>Hello, {userName}!</Text>
@@ -263,7 +264,7 @@ export default function HomeScreen({ navigation }) {
               <Text style={styles.noBooksText}>No books available</Text>
             )}
 
-          {/* ─── Favorites Card ──────────────────────────────── */}
+          {/* Favorites Card  */}
           <View style={styles.featuredCard}>
             <Text style={styles.featuredTitle}>Your Favorite Books 🎉</Text>
 
@@ -293,7 +294,7 @@ export default function HomeScreen({ navigation }) {
               </>
             ) : (
               <Text style={styles.featuredSubtitle}>
-                Your shelf is empty… Time to add some page-turners! 📚
+                Your shelf is empty… Time to add some books! 📚
               </Text>
             )}
 
@@ -303,13 +304,13 @@ export default function HomeScreen({ navigation }) {
             >
               <Text style={styles.readNowText}>
                 {filteredFavorites.length > 0
-                  ? "Show Me My Favorites"
+                  ? "Your Favorite List"
                   : "Browse Books"}
               </Text>
             </TouchableOpacity>
           </View>
 
-          {/* ─── Browse Categories ───────────────────────────── */}
+          {/* Browse Categories */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Categories</Text>
             <FlatList
@@ -322,10 +323,10 @@ export default function HomeScreen({ navigation }) {
             />
           </View>
 
-          {/* ─── Category Books ──────────────────────────────── */}
+          {/*  Category Books  */}
           <View style={styles.section}>{renderCategoryBooks()}</View>
 
-          {/* ─── Popular Books ──────────────────────────────── */}
+          {/*Popular Books */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Popular</Text>
             {popularBooks.length > 0 ? (
